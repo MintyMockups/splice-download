@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIXO Splice Ripper</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0a0a0a; color: #00ff9d; text-align: center; padding: 40px; margin: 0; }
+        h1 { color: #ff00aa; }
+        input { width: 85%; max-width: 700px; padding: 18px; font-size: 18px; background: #1f1f1f; border: 3px solid #00ff9d; color: white; border-radius: 8px; }
+        button { padding: 16px 45px; font-size: 20px; background: #00ff9d; color: black; border: none; border-radius: 8px; cursor: pointer; margin: 15px; font-weight: bold; }
+        button:hover { background: #00cc7a; transform: scale(1.05); }
+        #status { margin: 25px; font-size: 18px; min-height: 50px; }
+        #downloadBtn { display: none; background: #ff00aa; color: white; padding: 20px 55px; font-size: 24px; margin-top: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NIXO SPLICE RAW DOWNLOADER</h1>
+        <p>Paste any Splice sample link below</p>
+        
+        <input type="text" id="linkInput" placeholder="https://splice.com/sounds/xxxxxxxxxxxx" autocomplete="off">
+        <br><br>
+        <button onclick="extractSample()">🔥 EXTRACT RAW AUDIO</button>
+        
+        <div id="status"></div>
+        <button id="downloadBtn" onclick="downloadFile()">⬇ DOWNLOAD RAW SAMPLE</button>
+    </div>
+
+    <script>
+        let capturedAudioUrl = "";
+
+        async function extractSample() {
+            const link = document.getElementById("linkInput").value.trim();
+            const status = document.getElementById("status");
+            const dlBtn = document.getElementById("downloadBtn");
+
+            if (!link.includes("splice.com")) {
+                status.innerHTML = "❌ Please enter a valid Splice link";
+                return;
+            }
+
+            status.innerHTML = "🚀 Opening page & capturing signed raw audio...";
+            dlBtn.style.display = "none";
+
+            try {
+                const proxy = "https://api.allorigins.win/raw?url=";
+                const response = await fetch(proxy + encodeURIComponent(link));
+                const html = await response.text();
+
+                const audioRegex = /https?:\/\/[^"\']+\.(wav|mp3|flac|aiff)[^"\']*(token|signature|expires|AWSAccessKeyId|Policy)[^"\']*/gi;
+                let matches = html.match(audioRegex);
+
+                if (matches && matches.length > 0) {
+                    capturedAudioUrl = matches[0];
+                    status.innerHTML = "✅ Raw protected audio URL captured!";
+                    dlBtn.style.display = "inline-block";
+                } else {
+                    const jsonMatch = html.match(/"url"\\s*:\\s*"([^"]+\\.wav[^"]*)"/i);
+                    if (jsonMatch) {
+                        capturedAudioUrl = jsonMatch[1].replace(/\\u002F/g, '/');
+                        if (!capturedAudioUrl.startsWith('http')) capturedAudioUrl = 'https:' + capturedAudioUrl;
+                        status.innerHTML = "✅ Found direct raw URL!";
+                        dlBtn.style.display = "inline-block";
+                    } else {
+                        status.innerHTML = "⚠️ Could not capture automatically. Use Python version for better success.";
+                    }
+                }
+            } catch (e) {
+                status.innerHTML = "⚠️ CORS issue. Use the Python script for reliable extraction.";
+            }
+        }
+
+        function downloadFile() {
+            if (!capturedAudioUrl) return;
+            const a = document.createElement("a");
+            a.href = capturedAudioUrl;
+            a.download = "splice_raw_sample.wav";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        document.getElementById("linkInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") extractSample();
+        });
+    </script>
+</body>
+</html>
